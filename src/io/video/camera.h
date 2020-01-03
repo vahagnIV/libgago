@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include <linux/videodev2.h>
 
 namespace gago {
 namespace io {
@@ -24,12 +25,16 @@ struct CameraDeviceInfo {
   std::string manufacturer;
   std::string device_path;
   std::vector<Size> supported_resolutions;
-  bool broken;
+  bool broken = false;
+  std::vector<v4l2_fmtdesc> formats;
+  std::vector<std::vector<v4l2_frmsizeenum>> resolutions;
+  int fd = 0;
 };
 
 struct CameraSettings {
   CameraStatus status;
   std::string camera_name;
+  int format_index;
   int resolution_index;
 };
 

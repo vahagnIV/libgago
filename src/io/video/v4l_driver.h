@@ -19,8 +19,10 @@ class V4lDriver : public ICameraDriver {
 
   virtual ~V4lDriver() = default;
  protected:
-
+  void Open(std::vector<CameraDeviceInfo> & devices);
   void FindAvailableCameras(std::vector<CameraDeviceInfo> & out_cameras);
+  void InitAvailableFormats(std::vector<CameraDeviceInfo> & out_cameras);
+  void InitAvailableResolutions(std::vector<CameraDeviceInfo> &out_cameras);
 
 };
 
