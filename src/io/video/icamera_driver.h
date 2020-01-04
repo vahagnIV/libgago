@@ -32,12 +32,14 @@ class ICameraDriver: public algorithm::Observable<Capture> {
   }
 
   bool SetSettings(const std::vector<CameraSettings> &settings) {
+    StartLoop();
     if (settings.size() != cameras_.size())
       return false;
     for (int i = 0; i < cameras_.size(); ++i) {
-      if (settings[i].resolution_index >= cameras_[i].supported_resolutions.size())
+      if (settings[i].resolution_index >= cameras_[i].resolutions.size())
         return false;
     }
+    StartLoop();
     return true;
   }
   virtual ~ICameraDriver()= default;

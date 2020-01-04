@@ -4,6 +4,7 @@
 
 #include "v4l_driver.h"
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
@@ -31,6 +32,7 @@ void V4lDriver::Initialize() {
   Open(cameras);
   InitAvailableFormats(cameras);
   InitAvailableResolutions(cameras);
+  InitDevNames(cameras);
 
   for (CameraDeviceInfo &info : cameras)
     if (!info.broken)
@@ -106,6 +108,18 @@ void V4lDriver::InitAvailableResolutions(std::vector<CameraDeviceInfo> &out_came
       if (info.resolutions.size() == 0)
         info.broken = true;
     }
+  }
+}
+
+void V4lDriver::InitDevNames(std::vector<CameraDeviceInfo> &out_cameras) {
+  for (CameraDeviceInfo &info: out_cameras) {
+    if (info.broken)
+      continue;
+    boost::filesystem::path b_path(info.device_path);
+    std::ifstream istream((boost::filesystem::path("/sys/class/video4linux") / b_path.filename() / "name").string());
+    info.manufacturer = std::string((std::istreambuf_iterator<char>(istream)),
+                               std::istreambuf_iterator<char>());
+    boost::algorithm::trim(info.manufacturer);
   }
 }
 

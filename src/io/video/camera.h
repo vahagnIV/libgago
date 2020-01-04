@@ -24,8 +24,9 @@ enum CameraStatus {
 struct CameraDeviceInfo {
   std::string manufacturer;
   std::string device_path;
-  std::vector<Size> supported_resolutions;
   bool broken = false;
+
+  // TODO: think what
   std::vector<v4l2_fmtdesc> formats;
   std::vector<std::vector<v4l2_frmsizeenum>> resolutions;
   int fd = 0;

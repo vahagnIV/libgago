@@ -1,7 +1,7 @@
 find_package(V4L2 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
-file(GLOB SOURCES *.h *.cpp io/video/*.h io/video/*.cpp algorithm/*.hpp algorithm/*.cpp)
+file(GLOB SOURCES *.h *.cpp io/video/*.h io/video/*.cpp io/video/linux/*.h io/video/linux/*.cpp algorithm/*.hpp algorithm/*.cpp)
 
 list(REMOVE_ITEM ${SOURCES} test.cpp)
 

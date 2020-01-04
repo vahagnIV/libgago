@@ -4,7 +4,7 @@
 
 #include <algorithm/non_blocking_observer.hpp>
 #include "io/video/camera.h"
-#include "io/video/v4l_driver.h"
+#include "io/video/linux/v4l_driver.h"
 
 int main(){
 
