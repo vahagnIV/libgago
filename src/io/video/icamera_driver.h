@@ -39,6 +39,7 @@ class ICameraDriver: public algorithm::Observable<Capture> {
       if (settings[i].resolution_index >= cameras_[i].resolutions.size())
         return false;
     }
+    camera_settings_ = settings;
     StartLoop();
     return true;
   }

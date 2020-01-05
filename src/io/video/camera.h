@@ -21,6 +21,9 @@ enum CameraStatus {
   Disabled = 2
 };
 
+std::string to_string(CameraStatus status);
+bool try_parse(const std::string & status_str, CameraStatus & out_status);
+
 struct CameraDeviceInfo {
   std::string manufacturer;
   std::string device_path;
