@@ -12,4 +12,5 @@ int main(){
   d.Initialize();
 
  d.Start();
+ std::cout << "sss" << std::endl;
 }

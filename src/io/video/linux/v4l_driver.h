@@ -14,10 +14,10 @@ namespace video {
 class V4lDriver : public ICameraDriver {
  public:
   // ICamera
-  bool SetSettings(const std::vector<CameraSettings> & settings) override;
+  bool SetSettings(const std::vector<CameraSettings> &settings) override;
 
   //Observable
-  void Register(const algorithm::Observer<Capture> *observer) override ;
+  void Register(const algorithm::Observer<Capture> *observer) override;
   void Start();
 
   V4lDriver();
@@ -25,22 +25,32 @@ class V4lDriver : public ICameraDriver {
   virtual ~V4lDriver() = default;
  protected:
   void PrepareBuffers();
-  void SetFormats();
 
  protected:
 
-  void PrepareCapture() ;
-  void Open(std::vector<CameraDeviceInfo> & devices);
-  void FindAvailableCameras(std::vector<CameraDeviceInfo> & out_cameras);
-  void InitAvailableFormats(std::vector<CameraDeviceInfo> & out_cameras);
-  void InitAvailableResolutions(std::vector<CameraDeviceInfo> & out_cameras);
-  void InitDevNames(std::vector<CameraDeviceInfo> & out_cameras);
-  void InitRequestBuffers();
-  void InitBuffers();
-  std::vector<v4l2_format> current_formats;
-  std::vector<v4l2_requestbuffers> current_request_buffers;
-  std::vector<v4l2_buffer> current_buffers;
-  std::vector<uint8_t *> buffers;
+  class V4lCamera {
+    friend class V4lDriver;
+
+    V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings);
+    bool SetFormat();
+    bool InitRequestBuffers();
+    bool InitBuffers();
+
+    CameraDeviceInfo *device_info_;
+    CameraSettings *device_settings_;
+    v4l2_format format_;
+    v4l2_requestbuffers request_buffers_;
+    std::vector<v4l2_buffer> v4l2_buffer_;
+    std::vector<uint8_t *> buffers_;
+  };
+
+  void PrepareCapture();
+  void Open(std::vector<CameraDeviceInfo> &devices);
+  void FindAvailableCameras(std::vector<CameraDeviceInfo> &out_cameras);
+  void InitAvailableFormats(std::vector<CameraDeviceInfo> &out_cameras);
+  void InitAvailableResolutions(std::vector<CameraDeviceInfo> &out_cameras);
+  void InitDevNames(std::vector<CameraDeviceInfo> &out_cameras);
+  std::vector<V4lCamera *> cameras_;
 
 };
 

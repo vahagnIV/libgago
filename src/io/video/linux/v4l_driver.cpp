@@ -8,16 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-
-int xioctl(int fd, int request, void *arg) {
-  int r;
-
-  do
-    r = ioctl(fd, request, arg);
-  while (-1 == r && EINTR == errno);
-
-  return r;
-}
+#include "v4l_camera.h"
 
 namespace gago {
 namespace io {
@@ -35,7 +26,7 @@ void V4lDriver::Initialize() {
   InitAvailableResolutions(cameras);
   InitDevNames(cameras);
 
-  for (CameraDeviceInfo & info : cameras)
+  for (CameraDeviceInfo &info : cameras)
     if (!info.broken)
       devices_.push_back(info);
 
@@ -47,7 +38,7 @@ void V4lDriver::Initialize() {
 
 }
 
-void V4lDriver::FindAvailableCameras(std::vector<CameraDeviceInfo> & out_cameras) {
+void V4lDriver::FindAvailableCameras(std::vector<CameraDeviceInfo> &out_cameras) {
   out_cameras.resize(0);
 
   if (!boost::filesystem::exists("/sys/class/video4linux"))
@@ -62,9 +53,9 @@ void V4lDriver::FindAvailableCameras(std::vector<CameraDeviceInfo> & out_cameras
   }
 }
 
-void V4lDriver::Open(std::vector<CameraDeviceInfo> & devices) {
+void V4lDriver::Open(std::vector<CameraDeviceInfo> &devices) {
 
-  for (CameraDeviceInfo & info: devices) {
+  for (CameraDeviceInfo &info: devices) {
     info.fd = ::open(info.device_path.c_str(), O_RDWR);
     if (info.fd < 0) {
       info.broken = true;
@@ -74,8 +65,8 @@ void V4lDriver::Open(std::vector<CameraDeviceInfo> & devices) {
   }
 }
 
-void V4lDriver::InitAvailableFormats(std::vector<CameraDeviceInfo> & out_cameras) {
-  for (CameraDeviceInfo & info: out_cameras) {
+void V4lDriver::InitAvailableFormats(std::vector<CameraDeviceInfo> &out_cameras) {
+  for (CameraDeviceInfo &info: out_cameras) {
     if (info.broken)
       continue;
     v4l2_fmtdesc format_description;
@@ -90,14 +81,14 @@ void V4lDriver::InitAvailableFormats(std::vector<CameraDeviceInfo> & out_cameras
   }
 }
 
-void V4lDriver::InitAvailableResolutions(std::vector<CameraDeviceInfo> & out_cameras) {
+void V4lDriver::InitAvailableResolutions(std::vector<CameraDeviceInfo> &out_cameras) {
   v4l2_frmsizeenum argp;
 
-  for (CameraDeviceInfo & info: out_cameras) {
+  for (CameraDeviceInfo &info: out_cameras) {
     if (info.broken)
       continue;
     info.resolutions.resize(info.formats.size());
-    for (const v4l2_fmtdesc & format: info.formats) {
+    for (const v4l2_fmtdesc &format: info.formats) {
       argp.index = 0;
       argp.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       argp.pixel_format = format.pixelformat;
@@ -111,8 +102,8 @@ void V4lDriver::InitAvailableResolutions(std::vector<CameraDeviceInfo> & out_cam
   }
 }
 
-void V4lDriver::InitDevNames(std::vector<CameraDeviceInfo> & out_cameras) {
-  for (CameraDeviceInfo & info: out_cameras) {
+void V4lDriver::InitDevNames(std::vector<CameraDeviceInfo> &out_cameras) {
+  for (CameraDeviceInfo &info: out_cameras) {
     if (info.broken)
       continue;
     boost::filesystem::path b_path(info.device_path);
@@ -127,25 +118,7 @@ void V4lDriver::PrepareBuffers() {
 
 }
 
-void V4lDriver::SetFormats() {
-  current_formats.resize(devices_.size());
-  for (int j = 0; j < devices_.size(); ++j) {
-    memset(&current_formats[j], 0, sizeof(v4l2_format));
-    current_formats[j].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    current_formats[j].fmt.pix.width =
-        devices_[j].resolutions[camera_settings_[j].format_index][camera_settings_[j].resolution_index].discrete.width;
-    current_formats[j].fmt.pix.height =
-        devices_[j].resolutions[camera_settings_[j].format_index][camera_settings_[j].resolution_index].discrete.height;
-    current_formats[j].fmt.pix.pixelformat = devices_[j].formats[camera_settings_[j].format_index].pixelformat;
-    current_formats[j].fmt.pix.field = V4L2_FIELD_NONE;
-    if (0 != xioctl(devices_[j].fd, VIDIOC_S_FMT, &current_formats[j])) {
-      std::cerr << "Could not set format for camera " + devices_[j].device_path << std::endl;
-      std::cerr << (strerror(errno)) << std::endl;
-      devices_[j].broken = true;
-    }
-  }
-}
-bool V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
+bool V4lDriver::SetSettings(const std::vector<CameraSettings> &settings) {
 
   if (settings.size() != devices_.size())
     return false;
@@ -159,64 +132,101 @@ bool V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
 }
 
 void V4lDriver::PrepareCapture() {
-  SetFormats();
-  InitRequestBuffers();
-  InitBuffers();
+
 }
 
 void V4lDriver::Register(const algorithm::Observer<Capture> *observer) {
 
 }
-void V4lDriver::InitRequestBuffers() {
-  current_request_buffers.resize(devices_.size());
-
-  for (int j = 0; j < devices_.size(); ++j) {
-    memset(&current_request_buffers[j], 0, sizeof(v4l2_requestbuffers));
-    current_request_buffers[j].count = camera_settings_[j].number_of_buffers;
-    current_request_buffers[j].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    current_request_buffers[j].memory = V4L2_MEMORY_MMAP;
-
-    if (-1 == xioctl(devices_[j].fd, VIDIOC_REQBUFS, &current_request_buffers[j])) {
-      std::cerr << "Could not initialize request buffer for camera " + devices_[j].device_path << std::endl;
-      std::cerr << (strerror(errno)) << std::endl;
-      devices_[j].broken = true;
-    }
-  }
-}
-
-void V4lDriver::InitBuffers() {
-  current_buffers.resize(devices_.size());
-  buffers.resize(devices_.size());
-  for (int j = 0; j < devices_.size(); ++j) {
-    memset(&current_buffers[j], 0, sizeof(v4l2_buffer));
-    current_buffers[j].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    current_buffers[j].memory = V4L2_MEMORY_MMAP;
-    current_buffers[j].index = 0;
-
-    if (0 != xioctl(devices_[j].fd, VIDIOC_QUERYBUF, &current_buffers[j])) {
-      std::cerr << "Could not initialize buffer for camera " + devices_[j].device_path << std::endl;
-      std::cerr << (strerror(errno)) << std::endl;
-      devices_[j].broken = true;
-      continue;
-    }
-
-    buffers[j] = (uint8_t *) mmap(NULL, current_buffers[j].length, PROT_READ | PROT_WRITE,
-                               MAP_SHARED, devices_[j].fd, current_buffers[j].m.offset);
-
-    if (-1 == xioctl(devices_[j].fd, VIDIOC_STREAMON, &(current_buffers[j].type))) {
-      std::cerr << "Could not Retrieve buffer for camera " + devices_[j].device_path << std::endl;
-      std::cerr << (strerror(errno)) << std::endl;
-      devices_[j].broken = true;
-      continue;
-    }
-
-  }
-
-}
 
 void V4lDriver::Start() {
-  PrepareCapture();
 
+  cameras_.resize(0);
+  for (int j = 0; j < devices_.size(); ++j) {
+    if (camera_settings_[j].status == Enabled) {
+      V4lCamera *camera = new V4lCamera(&devices_[j], &camera_settings_[j]);
+      if (camera->SetFormat() && camera->InitRequestBuffers() && camera->InitBuffers())
+        cameras_.push_back(camera);
+    }
+  }
+
+}
+
+int xioctl(int fd, int request, void *arg) {
+  int r;
+
+  do
+    r = ioctl(fd, request, arg);
+  while (-1 == r && EINTR == errno);
+
+  return r;
+}
+
+V4lDriver::V4lCamera::V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings)
+    : device_info_(device_invo), device_settings_(settings) {
+
+}
+
+bool V4lDriver::V4lCamera::SetFormat() {
+  memset(&format_, 0, sizeof(v4l2_format));
+  format_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  format_.fmt.pix.width =
+      device_info_->resolutions[device_settings_->format_index][device_settings_->resolution_index].discrete.width;
+  format_.fmt.pix.height =
+      device_info_->resolutions[device_settings_->format_index][device_settings_->resolution_index].discrete.height;
+  format_.fmt.pix.pixelformat = device_info_->formats[device_settings_->format_index].pixelformat;
+  format_.fmt.pix.field = V4L2_FIELD_NONE;
+  if (0 != xioctl(device_info_->fd, VIDIOC_S_FMT, &format_)) {
+    std::cerr << "Could not set format for camera " + device_info_->device_path << std::endl;
+    std::cerr << (strerror(errno)) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool V4lDriver::V4lCamera::InitRequestBuffers() {
+  memset(&request_buffers_, 0, sizeof(v4l2_requestbuffers));
+  request_buffers_.count = device_settings_->number_of_buffers;
+  request_buffers_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  request_buffers_.memory = V4L2_MEMORY_MMAP;
+
+  if (-1 == xioctl(device_info_->fd, VIDIOC_REQBUFS, &request_buffers_)) {
+    std::cerr << "Could not initialize request buffer for camera " + device_info_->device_path << std::endl;
+    std::cerr << (strerror(errno)) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool V4lDriver::V4lCamera::InitBuffers() {
+  buffers_.resize(device_settings_->number_of_buffers);
+  v4l2_buffer_.resize(device_settings_->number_of_buffers);
+  for (int i = 0; i < device_settings_->number_of_buffers; ++i) {
+
+    memset(&v4l2_buffer_[i], 0, sizeof(v4l2_buffer));
+    v4l2_buffer_[i].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    v4l2_buffer_[i].memory = V4L2_MEMORY_MMAP;
+    v4l2_buffer_[i].index = i;
+
+    if (0 != xioctl(device_info_->fd, VIDIOC_QUERYBUF, &v4l2_buffer_[i])) {
+      std::cerr << "Could not initialize buffer for camera " + device_info_->device_path << std::endl;
+      std::cerr << (strerror(errno)) << std::endl;
+      return false;
+    }
+
+    buffers_[i] = (uint8_t *) mmap(NULL, v4l2_buffer_[i].length, PROT_READ | PROT_WRITE,
+                                   MAP_SHARED, device_info_->fd, v4l2_buffer_[i].m.offset);
+
+    // TODO: undo if anything goes wrong
+    if (-1 == xioctl(device_info_->fd, VIDIOC_STREAMON, &(v4l2_buffer_[i].type))) {
+      std::cerr << "Could not Retrieve buffer for camera " + device_info_->device_path << std::endl;
+      std::cerr << (strerror(errno)) << std::endl;
+      return false;
+    }
+  }
+
+
+  return true;
 }
 
 }
