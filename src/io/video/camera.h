@@ -40,6 +40,7 @@ struct CameraSettings {
   std::string camera_name;
   int format_index;
   int resolution_index;
+  int number_of_buffers = 1;
 };
 
 }

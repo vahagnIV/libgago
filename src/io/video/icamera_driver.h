@@ -18,34 +18,24 @@ struct Capture {
   cv::Mat data;
 };
 
-
-class ICameraDriver: public algorithm::Observable<Capture> {
+class ICameraDriver : public algorithm::Observable<Capture> {
 
  public:
   ICameraDriver() = default;
-  const std::vector<CameraDeviceInfo> &GetDevices() const {
-    return cameras_;
+  const std::vector<CameraDeviceInfo> & GetDevices() const {
+    return devices_;
   }
 
-  const std::vector<CameraSettings> &GetSettings() const {
+  const std::vector<CameraSettings> & GetSettings() const {
     return camera_settings_;
   }
 
-  bool SetSettings(const std::vector<CameraSettings> &settings) {
-    StartLoop();
-    if (settings.size() != cameras_.size())
-      return false;
-    for (int i = 0; i < cameras_.size(); ++i) {
-      if (settings[i].resolution_index >= cameras_[i].resolutions.size())
-        return false;
-    }
-    camera_settings_ = settings;
-    StartLoop();
-    return true;
-  }
-  virtual ~ICameraDriver()= default;
+  virtual bool SetSettings(const std::vector<CameraSettings> & settings) = 0;
+
+
+  virtual ~ICameraDriver() = default;
  protected:
-  std::vector<CameraDeviceInfo> cameras_;
+  std::vector<CameraDeviceInfo> devices_;
   std::vector<CameraSettings> camera_settings_;
 
 };
