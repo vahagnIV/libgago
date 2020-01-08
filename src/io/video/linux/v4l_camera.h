@@ -9,7 +9,7 @@ namespace io {
 namespace video {
 
 class v4lCamera {
-  
+
 };
 
 }
