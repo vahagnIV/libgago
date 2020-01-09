@@ -8,20 +8,21 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include "v4l_camera.h"
 
 namespace gago {
 namespace io {
 namespace video {
-V4lDriver::V4lDriver() {
 
-}
 
+
+/*
 void V4lDriver::Initialize() {
   std::vector<CameraDeviceInfo> cameras;
   std::vector<int> fds;
   FindAvailableCameras(cameras);
-  Open(cameras);
+
+
+
   InitAvailableFormats(cameras);
   InitAvailableResolutions(cameras);
   InitDevNames(cameras);
@@ -82,24 +83,7 @@ void V4lDriver::InitAvailableFormats(std::vector<CameraDeviceInfo> &out_cameras)
 }
 
 void V4lDriver::InitAvailableResolutions(std::vector<CameraDeviceInfo> &out_cameras) {
-  v4l2_frmsizeenum argp;
 
-  for (CameraDeviceInfo &info: out_cameras) {
-    if (info.broken)
-      continue;
-    info.resolutions.resize(info.formats.size());
-    for (const v4l2_fmtdesc &format: info.formats) {
-      argp.index = 0;
-      argp.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      argp.pixel_format = format.pixelformat;
-      while (0 == xioctl(info.fd, VIDIOC_ENUM_FRAMESIZES, &argp)) {
-        info.resolutions[format.index].push_back(argp);
-        argp.index++;
-      }
-      if (info.resolutions.size() == 0)
-        info.broken = true;
-    }
-  }
 }
 
 void V4lDriver::InitDevNames(std::vector<CameraDeviceInfo> &out_cameras) {
@@ -152,36 +136,13 @@ void V4lDriver::Start() {
 
 }
 
-int xioctl(int fd, int request, void *arg) {
-  int r;
-
-  do
-    r = ioctl(fd, request, arg);
-  while (-1 == r && EINTR == errno);
-
-  return r;
-}
-
-V4lDriver::V4lCamera::V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings)
-    : device_info_(device_invo), device_settings_(settings) {
+V4lDriver::V4lCamera::V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings, int fd = 0)
+    : device_info_(device_invo), device_settings_(settings), fd_(fd) {
 
 }
 
 bool V4lDriver::V4lCamera::SetFormat() {
-  memset(&format_, 0, sizeof(v4l2_format));
-  format_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  format_.fmt.pix.width =
-      device_info_->resolutions[device_settings_->format_index][device_settings_->resolution_index].discrete.width;
-  format_.fmt.pix.height =
-      device_info_->resolutions[device_settings_->format_index][device_settings_->resolution_index].discrete.height;
-  format_.fmt.pix.pixelformat = device_info_->formats[device_settings_->format_index].pixelformat;
-  format_.fmt.pix.field = V4L2_FIELD_NONE;
-  if (0 != xioctl(device_info_->fd, VIDIOC_S_FMT, &format_)) {
-    std::cerr << "Could not set format for camera " + device_info_->device_path << std::endl;
-    std::cerr << (strerror(errno)) << std::endl;
-    return false;
-  }
-  return true;
+
 }
 
 bool V4lDriver::V4lCamera::InitRequestBuffers() {
@@ -225,10 +186,27 @@ bool V4lDriver::V4lCamera::InitBuffers() {
     }
   }
 
-
   return true;
 }
 
+bool V4lDriver::V4lCamera::Open() {
+  if (fd_ > 0)
+    Close();
+  fd_ = ::open(device_info_->device_path.c_str(), O_RDWR);
+  return IsOpen();
+}
+
+void V4lDriver::V4lCamera::Close() {
+  if (fd_ > 0) {
+    close(fd_);
+    fd_ = 0;
+  }
+
+}
+bool V4lDriver::V4lCamera::IsOpen() {
+  return fd_ > 0;
+}
+*/
 }
 }
 }

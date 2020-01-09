@@ -3,14 +3,12 @@
 //
 
 #include <algorithm/non_blocking_observer.hpp>
-#include "io/video/camera.h"
-#include "io/video/linux/v4l_driver.h"
+#include "io/video/linux/v4l_camera.h"
+//#include "io/video/linux/v4l_driver.h"
 
 int main(){
 
-  gago::io::video::V4lDriver d;
-  d.Initialize();
+  gago::io::video::V4lCamera* cam = gago::io::video::V4lCamera::Create("/dev/video0");
 
- d.Start();
  std::cout << "sss" << std::endl;
 }

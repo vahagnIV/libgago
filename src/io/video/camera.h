@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include <linux/videodev2.h>
 
 namespace gago {
 namespace io {
@@ -22,25 +21,19 @@ enum CameraStatus {
 };
 
 std::string to_string(CameraStatus status);
-bool try_parse(const std::string & status_str, CameraStatus & out_status);
+bool try_parse(const std::string &status_str, CameraStatus &out_status);
 
-struct CameraDeviceInfo {
-  std::string manufacturer;
-  std::string device_path;
-  bool broken = false;
-
-  // TODO: think what
-  std::vector<v4l2_fmtdesc> formats;
-  std::vector<std::vector<v4l2_frmsizeenum>> resolutions;
-  int fd = 0;
-};
-
-struct CameraSettings {
-  CameraStatus status;
-  std::string camera_name;
-  int format_index;
-  int resolution_index;
-  int number_of_buffers = 1;
+class CameraMeta {
+ public:
+  virtual const std::vector<std::vector<Size>> &GetResolutions() const { return resolutions_; }
+  virtual const std::vector<std::string> &GetFormats() const { return formats_; }
+  const std::string &GetName() const { return name_; }
+  void SetName(const std::string &name) { name_ = name; }
+ private:
+  std::string name_;
+  std::vector<std::vector<Size>> resolutions_;
+  std::vector<std::string> formats_;
+  virtual ~CameraMeta() = default;
 };
 
 }

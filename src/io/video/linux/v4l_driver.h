@@ -11,6 +11,10 @@ namespace gago {
 namespace io {
 namespace video {
 
+class V4lDriver;
+/*
+
+
 class V4lDriver : public ICameraDriver {
  public:
   // ICamera
@@ -31,7 +35,10 @@ class V4lDriver : public ICameraDriver {
   class V4lCamera {
     friend class V4lDriver;
 
-    V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings);
+    V4lCamera(CameraDeviceInfo *device_invo, CameraSettings *settings, int fd = 0);
+    bool Open();
+    void Close();
+    bool IsOpen();
     bool SetFormat();
     bool InitRequestBuffers();
     bool InitBuffers();
@@ -42,6 +49,8 @@ class V4lDriver : public ICameraDriver {
     v4l2_requestbuffers request_buffers_;
     std::vector<v4l2_buffer> v4l2_buffer_;
     std::vector<uint8_t *> buffers_;
+    int fd_;
+
   };
 
   void PrepareCapture();
@@ -53,7 +62,7 @@ class V4lDriver : public ICameraDriver {
   std::vector<V4lCamera *> cameras_;
 
 };
-
+*/
 }
 }
 }
