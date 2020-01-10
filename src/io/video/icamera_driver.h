@@ -13,7 +13,8 @@ namespace io {
 namespace video {
 
 struct Capture {
-  CameraMeta *camera;
+  Capture(const CameraMeta * cam): camera(cam){}
+  const CameraMeta *camera;
   cv::Mat data;
 };
 
@@ -21,10 +22,11 @@ class ICameraDriver : public algorithm::Observable<Capture> {
 
  public:
   ICameraDriver() = default;
-  virtual std::vector<CameraMeta *> GetMeta()  = 0;
+  virtual void SetSettings(const std::vector<CameraSettings> & settings) = 0;
+  virtual void GetSettings(std::vector<CameraSettings> & out_settings) const = 0;
+  virtual void Start() = 0;
   virtual ~ICameraDriver() = default;
  protected:
-
 
 };
 }

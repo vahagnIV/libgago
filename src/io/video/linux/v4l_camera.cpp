@@ -9,6 +9,7 @@
 #include <libv4l2.h>
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <linux/videodev2.h>
 
 namespace gago {
 namespace io {
@@ -24,18 +25,49 @@ int xioctl(int fd, int request, void *arg) {
   return r;
 }
 
+#define CLIP(color) (uint8_t)(((color) > 0xFF) ? 0xff : (((color) < 0) ? 0 : (color)))
+void V4lCamera::Yuyv2Rgb(const uint8_t *src,
+                         uint8_t *dest,
+                         int width, int height,
+                         int stride) {
+  int j;
+
+  while (--height >= 0) {
+    for (j = 0; j + 1 < width; j += 2) {
+      int u = src[1];
+      int v = src[3];
+
+      int u1 = (((u - 128) << 7) + (u - 128)) >> 6;
+      int rg = (((u - 128) << 1) + (u - 128) +
+          ((v - 128) << 2) + ((v - 128) << 1)) >> 3;
+
+      int v1 = (((v - 128) << 1) + (v - 128)) >> 1;
+
+      *dest++ = CLIP(src[0] + u1);
+      *dest++ = CLIP(src[0] - rg);
+      *dest++ = CLIP(src[0] + v1);
+
+      *dest++ = CLIP(src[2] + u1);
+      *dest++ = CLIP(src[2] - rg);
+      *dest++ = CLIP(src[2] + v1);
+      src += 4;
+    }
+    src += stride - (width * 2);
+  }
+}
+
 V4lCamera::V4lCamera(int fd,
-                     const std::string &device_path,
-                     const std::string &device_details,
-                     const std::vector<v4l2_fmtdesc> &format_descriptions,
-                     const std::vector<std::vector<v4l2_frmsizeenum>> &available_resolutions)
+                     const std::string & device_path,
+                     const std::string & device_details,
+                     const std::vector<v4l2_fmtdesc> & format_descriptions,
+                     const std::vector<std::vector<v4l2_frmsizeenum>> & available_resolutions)
     : fd_(fd),
       format_descriptions_(format_descriptions),
       available_resolutions_(available_resolutions),
       device_details_(device_details),
       device_path_(device_path) {
 
-  for (v4l2_fmtdesc &fmt : format_descriptions_)
+  for (v4l2_fmtdesc & fmt : format_descriptions_)
     formats_.push_back(std::string((char *) fmt.description));
 
   resolutions_.resize(formats_.size());
@@ -47,14 +79,14 @@ V4lCamera::V4lCamera(int fd,
     }
   }
 
-  device_settings_.camera_name = device_path;
-  device_settings_.status = Enabled;
-  device_settings_.format_index = 0;
-  device_settings_.resolution_index = 0;
+  SetName(device_path);
+  settings_.status = CameraStatus::Enabled;
+  settings_.format_index = 0;
+  settings_.resolution_index = 0;
 
 }
 
-void V4lCamera::InitFormats(int fd, std::vector<v4l2_fmtdesc> &out_formats) {
+void V4lCamera::InitFormats(int fd, std::vector<v4l2_fmtdesc> & out_formats) {
   v4l2_fmtdesc format_description;
   format_description.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   format_description.index = 0;
@@ -66,12 +98,12 @@ void V4lCamera::InitFormats(int fd, std::vector<v4l2_fmtdesc> &out_formats) {
 }
 
 void V4lCamera::InitResolutions(int fd,
-                                const std::vector<v4l2_fmtdesc> &formats,
-                                std::vector<std::vector<v4l2_frmsizeenum>> &resolutions) {
+                                const std::vector<v4l2_fmtdesc> & formats,
+                                std::vector<std::vector<v4l2_frmsizeenum>> & resolutions) {
   v4l2_frmsizeenum argp;
 
   resolutions.resize(formats.size());
-  for (const v4l2_fmtdesc &format: formats) {
+  for (const v4l2_fmtdesc & format: formats) {
     argp.index = 0;
     argp.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     argp.pixel_format = format.pixelformat;
@@ -83,7 +115,7 @@ void V4lCamera::InitResolutions(int fd,
 
 }
 
-V4lCamera *V4lCamera::Create(const std::string &device_path) {
+V4lCamera *V4lCamera::Create(const std::string & device_path) {
   int fd = ::open(device_path.c_str(), O_RDWR);
   if (fd < 0)
     return nullptr;
@@ -108,16 +140,8 @@ V4lCamera *V4lCamera::Create(const std::string &device_path) {
 
 }
 
-/*const CameraDeviceInfo *V4lCamera::GetInfo() const {
-  return &device_info_;
-}
-
-const CameraSettings *V4lCamera::GetSettings() const {
-  return &device_settings_;
-}*/
 V4lCamera::~V4lCamera() {
   Close();
-
 }
 
 bool V4lCamera::Open() {
@@ -139,10 +163,10 @@ bool V4lCamera::SetFormat() {
   memset(&format_, 0, sizeof(v4l2_format));
   format_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   format_.fmt.pix.width =
-      available_resolutions_[device_settings_.format_index][device_settings_.resolution_index].discrete.width;
+      available_resolutions_[settings_.format_index][settings_.resolution_index].discrete.width;
   format_.fmt.pix.height =
-      available_resolutions_[device_settings_.format_index][device_settings_.resolution_index].discrete.height;
-  format_.fmt.pix.pixelformat = format_descriptions_[device_settings_.format_index].pixelformat;
+      available_resolutions_[settings_.format_index][settings_.resolution_index].discrete.height;
+  format_.fmt.pix.pixelformat = format_descriptions_[settings_.format_index].pixelformat;
   format_.fmt.pix.field = V4L2_FIELD_NONE;
   if (0 != xioctl(fd_, VIDIOC_S_FMT, &format_)) {
     std::cerr << "Could not set format for camera " + device_path_ << std::endl;
@@ -154,7 +178,7 @@ bool V4lCamera::SetFormat() {
 
 bool V4lCamera::InitRequestBuffers() {
   memset(&request_buffers_, 0, sizeof(v4l2_requestbuffers));
-  request_buffers_.count = device_settings_.number_of_buffers;
+  request_buffers_.count = settings_.number_of_buffers;
   request_buffers_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   request_buffers_.memory = V4L2_MEMORY_MMAP;
 
@@ -168,9 +192,9 @@ bool V4lCamera::InitRequestBuffers() {
 }
 
 bool V4lCamera::InitBuffers() {
-  buffers_.resize(device_settings_.number_of_buffers);
-  v4l2_buffer_.resize(device_settings_.number_of_buffers);
-  for (int i = 0; i < device_settings_.number_of_buffers; ++i) {
+  buffers_.resize(settings_.number_of_buffers);
+  v4l2_buffer_.resize(settings_.number_of_buffers);
+  for (int i = 0; i < settings_.number_of_buffers; ++i) {
 
     memset(&v4l2_buffer_[i], 0, sizeof(v4l2_buffer));
     v4l2_buffer_[i].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -193,6 +217,40 @@ bool V4lCamera::InitBuffers() {
       return false;
     }
   }
+}
+const std::string & V4lCamera::GetUniqueId() const {
+  return device_path_;
+}
+
+const std::string & V4lCamera::GetHardwareDetails() const {
+  return device_details_;
+}
+
+bool V4lCamera::PrepareBuffers() {
+  return SetFormat() && InitRequestBuffers() && InitBuffers();
+}
+
+bool V4lCamera::Grab() {
+  bool result = 0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
+}
+
+bool V4lCamera::Retieve(cv::Mat & out_image) {
+
+  if (-1 == xioctl(fd_, VIDIOC_DQBUF, &v4l2_buffer_[current_capture_index]))
+    return false;
+
+  out_image.create(format_.fmt.pix.height, format_.fmt.pix.width , CV_8UC3);
+
+  Yuyv2Rgb(buffers_[current_capture_index],
+           out_image.data,
+           format_.fmt.pix.width,
+           format_.fmt.pix.height,
+           format_.fmt.pix.bytesperline);
+
+
+  current_capture_index = (current_capture_index + 1) % settings_.number_of_buffers;
+  return true;
+
 }
 
 }
