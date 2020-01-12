@@ -13,7 +13,7 @@ template<typename T>
 
 class Observer {
  public:
-  virtual void Notify(std::shared_ptr<T> &) = 0;
+  virtual void Notify(const std::shared_ptr<T> &) = 0;
   virtual ~Observer() = default;
 
 };

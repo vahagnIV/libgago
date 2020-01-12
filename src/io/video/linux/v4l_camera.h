@@ -33,6 +33,7 @@ class V4lCamera : public CameraMeta {
   bool SetFormat();
   bool InitRequestBuffers();
   bool InitBuffers();
+  void UnmapBuffers();
 
   V4lCamera(int fd,
             const std::string & device_path,

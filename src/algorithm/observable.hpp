@@ -15,12 +15,12 @@ template<typename T>
 class Observable {
  public:
   Observable() = default;
-  virtual void Register(const Observer<T> *observer) = 0;
+  virtual void Register(Observer<T> *observer) = 0;
   virtual ~Observable(){};
  protected:
   void Notify(const std::shared_ptr<T> &data) {
-    for (Observer<T> &observer: observers_) {
-      observer.Notify(data);
+    for (Observer<T> *observer: observers_) {
+      observer->Notify(data);
     }
   }
   std::vector<Observer<T> *> observers_;

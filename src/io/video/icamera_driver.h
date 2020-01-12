@@ -18,7 +18,7 @@ struct Capture {
   cv::Mat data;
 };
 
-class ICameraDriver : public algorithm::Observable<Capture> {
+ class ICameraDriver : public algorithm::Observable<std::vector<Capture>> {
 
  public:
   ICameraDriver() = default;

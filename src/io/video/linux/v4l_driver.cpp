@@ -9,12 +9,12 @@ namespace gago {
 namespace io {
 namespace video {
 
-V4lDriver::V4lDriver() {
+V4lDriver::V4lDriver() : ready_threads_(0) {
 
 }
 
-void V4lDriver::Register(const algorithm::Observer<Capture> *observer) {
-
+void V4lDriver::Register(algorithm::Observer<std::vector<Capture>> *observer) {
+  this->observers_.push_back(observer);
 }
 
 void V4lDriver::Initialize() {
@@ -31,54 +31,119 @@ void V4lDriver::Initialize() {
   }
 }
 
-void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
-  for(const CameraSettings & setting: settings)
-  {
-    if(cameras_.find(setting.camera->GetUniqueId())!= cameras_.end())
-      cameras_[setting.camera->GetUniqueId()]->SetName(setting.config.name);
+void V4lDriver::SetSettings(const std::vector<CameraSettings> &settings) {
+  for (const CameraSettings &setting: settings) {
+    if (cameras_.find(setting.camera->GetUniqueId()) != cameras_.end()) {
+      V4lCamera *camera = cameras_[setting.camera->GetUniqueId()];
+      camera->SetName(setting.config.name);
+      camera->settings_.resolution_index = setting.config.resolution_index;
+    }
   }
 }
 
-void V4lDriver::GetSettings(std::vector<CameraSettings> & out_settings) const {
-  for(const std::pair<std::string, V4lCamera * > & camera: cameras_)
-  {
+void V4lDriver::GetSettings(std::vector<CameraSettings> &out_settings) const {
+  for (const std::pair<std::string, V4lCamera *> &camera: cameras_) {
     out_settings.push_back(CameraSettings(camera.second, camera.second->GetConfiguration()));
   }
 }
 
 void V4lDriver::Start() {
-  for(const std::pair<std::string, V4lCamera * > & camera: cameras_)
-  {
-    if(camera.second->Enabled())
-      camera.second->PrepareBuffers();
-  }
+  cancelled_ = false;
+  thread_ = new std::thread(&V4lDriver::MainThread, this);
 }
 
-void V4lDriver::CaptureThread(V4lCamera *camera_ptr) {
-  while (!cancelled_)
-  {
+void V4lDriver::CaptureThread(V4lCamera *camera_ptr, std::atomic_bool &capture_requested, std::atomic_bool &ready) {
+  while (!cancelled_) {
     std::unique_lock<std::mutex> lk(mutex_);
-    condition_variable_.wait(lk, [&]{ return capture_expected_;});
+    IncrementReadyThreads();
+
+    ready = true;
+    condition_variable_.wait(lk, [&] { return (bool) capture_requested; });
+    capture_requested = false;
+    ready = false;
+
+    capture_requested = false;
     camera_ptr->Grab();
+    DecrementReadyThreads();
   }
 }
 
-void V4lDriver::MainThread(std::vector<V4lCamera * > cameras) {
-  while (!cancelled_)
-  {
-    capture_expected_= true;
+void V4lDriver::MainThread() {
+  std::vector<V4lCamera *> enabled_cameras;
+  for (const std::pair<std::string, V4lCamera *> &cam_name_cam: cameras_)
+    if (cam_name_cam.second->Enabled())
+      enabled_cameras.push_back(cam_name_cam.second);
+
+  std::vector<std::thread *> enabled_camera_threads(enabled_cameras.size());
+  std::vector<std::atomic_bool> capture_expected(enabled_cameras.size());
+  std::vector<std::atomic_bool> ready(enabled_cameras.size());
+
+
+  // Initialize threads and shared variables
+  for (int j = 0; j < enabled_cameras.size(); ++j) {
+    enabled_cameras[j]->PrepareBuffers();
+    capture_expected[j] = false;
+    ready[j] = false;
+    enabled_camera_threads[j] =
+        new std::thread(&V4lDriver::CaptureThread,
+                        this,
+                        enabled_cameras[j],
+                        std::ref(capture_expected[j]),
+                        std::ref(ready[j]));
+  }
+
+  while (!cancelled_) {
+
+    // Wait until all cameras are ready
+    bool all_are_ready;
+    do {
+      all_are_ready = true;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      for (int j = 0; j < enabled_cameras.size(); ++j) {
+        all_are_ready = all_are_ready && ready[j];
+      }
+    } while (!cancelled_ && !all_are_ready);
+    if (cancelled_)
+      break;
+
+    for (int j = 0; j < enabled_cameras.size(); ++j) {
+      capture_expected[j] = true;
+    }
+
     condition_variable_.notify_all();
     // Wait for captrue threads to finish
 
     capture_expected_ = false;
     std::shared_ptr<std::vector<Capture>> captures = std::make_shared<std::vector<Capture>>();
-    for (int i = 0; i < cameras.size(); ++i) {
-      Capture capture(cameras[i]);
-      cameras[i]->Retieve(capture.data);
+    for (int i = 0; i < enabled_cameras.size(); ++i) {
+      Capture capture(enabled_cameras[i]);
+      enabled_cameras[i]->Retieve(capture.data);
       captures->push_back(capture);
     }
-    
+    Notify(captures);
   }
+
+  for (int i = 0; i < enabled_cameras.size(); ++i) {
+    enabled_camera_threads[i]->join();
+    delete enabled_camera_threads[i];
+    enabled_cameras[i]->UnmapBuffers();
+  }
+}
+
+void V4lDriver::IncrementReadyThreads() {
+
+}
+
+void V4lDriver::DecrementReadyThreads() {
+
+}
+
+int V4lDriver::ReadyThreadsCount() {
+  return 0;
+}
+void V4lDriver::Join() {
+  if (thread_)
+    thread_->join();
 }
 
 }

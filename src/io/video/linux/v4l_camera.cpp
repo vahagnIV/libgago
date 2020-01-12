@@ -252,6 +252,9 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
   return true;
 
 }
+void V4lCamera::UnmapBuffers() {
+
+}
 
 }
 }
