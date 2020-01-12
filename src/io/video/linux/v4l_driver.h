@@ -35,18 +35,10 @@ class V4lDriver : public ICameraDriver {
   void CaptureThread(V4lCamera * camera_ptr, std::atomic_bool & capture_requested, std::atomic_bool & ready);
   void MainThread();
 
-  void IncrementReadyThreads();
-  void DecrementReadyThreads();
-  int ReadyThreadsCount();
-
-  std::atomic<int> ready_threads_;
-
   std::unordered_map<std::string, V4lCamera *> cameras_;
   std::atomic_bool cancelled_;
-  bool capture_expected_;
   std::thread * thread_ = nullptr;
   std::mutex mutex_;
-  std::mutex thread_count_mutex_;
   std::condition_variable condition_variable_;
 
 };

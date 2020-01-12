@@ -9,7 +9,7 @@ namespace gago {
 namespace io {
 namespace video {
 
-V4lDriver::V4lDriver() : ready_threads_(0) {
+V4lDriver::V4lDriver() {
 
 }
 
@@ -55,16 +55,13 @@ void V4lDriver::Start() {
 void V4lDriver::CaptureThread(V4lCamera *camera_ptr, std::atomic_bool &capture_requested, std::atomic_bool &ready) {
   while (!cancelled_) {
     std::unique_lock<std::mutex> lk(mutex_);
-    IncrementReadyThreads();
-
     ready = true;
     condition_variable_.wait(lk, [&] { return (bool) capture_requested; });
-    capture_requested = false;
     ready = false;
-
-    capture_requested = false;
     camera_ptr->Grab();
-    DecrementReadyThreads();
+    capture_requested = false;
+
+    // May move the buffer reading here
   }
 }
 
@@ -113,7 +110,6 @@ void V4lDriver::MainThread() {
     condition_variable_.notify_all();
     // Wait for captrue threads to finish
 
-    capture_expected_ = false;
     std::shared_ptr<std::vector<Capture>> captures = std::make_shared<std::vector<Capture>>();
     for (int i = 0; i < enabled_cameras.size(); ++i) {
       Capture capture(enabled_cameras[i]);
@@ -130,17 +126,7 @@ void V4lDriver::MainThread() {
   }
 }
 
-void V4lDriver::IncrementReadyThreads() {
 
-}
-
-void V4lDriver::DecrementReadyThreads() {
-
-}
-
-int V4lDriver::ReadyThreadsCount() {
-  return 0;
-}
 void V4lDriver::Join() {
   if (thread_)
     thread_->join();
