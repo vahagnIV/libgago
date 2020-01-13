@@ -32,7 +32,7 @@ class V4lDriver : public ICameraDriver {
   void Join();
 
  private:
-  void CaptureThread(V4lCamera * camera_ptr, std::atomic_bool & capture_requested, std::atomic_bool & ready);
+  void CaptureThread(V4lCamera * camera_ptr, std::atomic_bool & capture_requested, std::atomic_bool & ready, long long & time);
   void MainThread();
 
   std::unordered_map<std::string, V4lCamera *> cameras_;

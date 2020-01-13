@@ -15,6 +15,7 @@ namespace video {
 struct Capture {
   Capture(const CameraMeta * cam): camera(cam){}
   const CameraMeta *camera;
+  long long capture_date;
   cv::Mat data;
 };
 
