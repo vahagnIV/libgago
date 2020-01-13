@@ -78,7 +78,6 @@ void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
 
     // May move the buffer reading here
   }
-  std::cout << "iii" << std::endl;
 }
 
 void V4lDriver::MainThread() {
