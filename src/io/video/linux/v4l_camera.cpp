@@ -83,6 +83,7 @@ V4lCamera::V4lCamera(int fd,
   settings_.status = CameraStatus::Enabled;
   settings_.format_index = 0;
   settings_.resolution_index = 0;
+  settings_.number_of_buffers = 3;
 
 }
 
@@ -141,6 +142,7 @@ V4lCamera *V4lCamera::Create(const std::string & device_path) {
 }
 
 V4lCamera::~V4lCamera() {
+  UnmapBuffers();
   Close();
 }
 
@@ -218,6 +220,7 @@ bool V4lCamera::InitBuffers() {
     }
   }
 }
+
 const std::string & V4lCamera::GetUniqueId() const {
   return device_path_;
 }
@@ -239,7 +242,7 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
   if (-1 == xioctl(fd_, VIDIOC_DQBUF, &v4l2_buffer_[current_capture_index]))
     return false;
 
-  out_image.create(format_.fmt.pix.height, format_.fmt.pix.width , CV_8UC3);
+  out_image.create(format_.fmt.pix.height, format_.fmt.pix.width, CV_8UC3);
 
   Yuyv2Rgb(buffers_[current_capture_index],
            out_image.data,
@@ -247,12 +250,30 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
            format_.fmt.pix.height,
            format_.fmt.pix.bytesperline);
 
-
   current_capture_index = (current_capture_index + 1) % settings_.number_of_buffers;
   return true;
 
 }
 void V4lCamera::UnmapBuffers() {
+  if (request_buffers_.count) {
+    request_buffers_.count = 0;
+    for (int j = 0; j < v4l2_buffer_.size(); ++j) {
+      if (0 == xioctl(fd_, VIDIOC_STREAMOFF, &(v4l2_buffer_[j].type))
+          && 0 == munmap(buffers_[j], v4l2_buffer_[j].length)) {
+      } else {
+        std::cerr << "Could not unmap buffer for camera " + device_path_ << std::endl;
+        std::cerr << (strerror(errno)) << std::endl;
+      }
+    }
+    buffers_.resize(0);
+    v4l2_buffer_.resize(0);
+
+    if (-1 == xioctl(fd_, VIDIOC_REQBUFS, &request_buffers_)) {
+      std::cerr << "Could not initialize request buffer for camera " + device_path_ << std::endl;
+      std::cerr << (strerror(errno)) << std::endl;
+      return;
+    }
+  }
 
 }
 

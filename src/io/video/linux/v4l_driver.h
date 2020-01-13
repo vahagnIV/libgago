@@ -22,22 +22,28 @@ class V4lDriver : public ICameraDriver {
   V4lDriver();
 
   // Observable
-  void Register(algorithm::Observer<std::vector<Capture>> *observer) override;
 
   void Initialize();
   void SetSettings(const std::vector<CameraSettings> & settings) override;
   void GetSettings(std::vector<CameraSettings> & out_settings) const override;
-  virtual ~V4lDriver(){}
+  virtual ~V4lDriver();
   void Start() override;
   void Join();
+  void Register(CameraWatcher *observer);
+  void UnRegister(CameraWatcher *observer);
+  void Stop();
 
  private:
-  void CaptureThread(V4lCamera * camera_ptr, std::atomic_bool & capture_requested, std::atomic_bool & ready, long long & time);
+  void Register(algorithm::Observer<std::vector<Capture>> *observer) override;
+  void CaptureThread(V4lCamera *camera_ptr,
+                     std::atomic_bool & capture_requested,
+                     std::atomic_bool & ready,
+                     long long & time);
   void MainThread();
 
   std::unordered_map<std::string, V4lCamera *> cameras_;
   std::atomic_bool cancelled_;
-  std::thread * thread_ = nullptr;
+  std::thread *thread_ = nullptr;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
 

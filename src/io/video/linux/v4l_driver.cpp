@@ -18,6 +18,10 @@ void V4lDriver::Register(algorithm::Observer<std::vector<Capture>> *observer) {
   this->observers_.push_back(observer);
 }
 
+void V4lDriver::Register(CameraWatcher *observer) {
+  Register((algorithm::Observer<std::vector<Capture>> *) observer);
+}
+
 void V4lDriver::Initialize() {
   if (!boost::filesystem::exists("/sys/class/video4linux"))
     return;
@@ -33,13 +37,17 @@ void V4lDriver::Initialize() {
 }
 
 void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
+  Stop();
   for (const CameraSettings & setting: settings) {
+    // TODO: verify settings
     if (cameras_.find(setting.camera->GetUniqueId()) != cameras_.end()) {
       V4lCamera *camera = cameras_[setting.camera->GetUniqueId()];
       camera->SetName(setting.config.name);
-      camera->settings_.resolution_index = setting.config.resolution_index;
+
+      camera->settings_ = setting.config;
     }
   }
+  Start();
 }
 
 void V4lDriver::GetSettings(std::vector<CameraSettings> & out_settings) const {
@@ -49,8 +57,10 @@ void V4lDriver::GetSettings(std::vector<CameraSettings> & out_settings) const {
 }
 
 void V4lDriver::Start() {
-  cancelled_ = false;
-  thread_ = new std::thread(&V4lDriver::MainThread, this);
+  if (nullptr == thread_) {
+    cancelled_ = false;
+    thread_ = new std::thread(&V4lDriver::MainThread, this);
+  }
 }
 
 void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
@@ -68,13 +78,21 @@ void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
 
     // May move the buffer reading here
   }
+  std::cout << "iii" << std::endl;
 }
 
 void V4lDriver::MainThread() {
   std::vector<V4lCamera *> enabled_cameras;
+  std::vector<const CameraMeta *> enabled_cameras_meta;
   for (const std::pair<std::string, V4lCamera *> & cam_name_cam: cameras_)
-    if (cam_name_cam.second->Enabled())
+    if (cam_name_cam.second->Enabled()) {
       enabled_cameras.push_back(cam_name_cam.second);
+      enabled_cameras_meta.push_back(cam_name_cam.second);
+    }
+
+  for (int k = 0; k < observers_.size(); ++k) {
+    ((CameraWatcher *) observers_[k])->SetCameras(enabled_cameras_meta);
+  }
 
   std::vector<std::thread *> enabled_camera_threads(enabled_cameras.size());
   std::vector<std::atomic_bool> capture_expected(enabled_cameras.size());
@@ -121,12 +139,13 @@ void V4lDriver::MainThread() {
         all_are_ready = all_are_ready && ready[j];
       }
     } while (!cancelled_ && !all_are_ready);
-    if (cancelled_)
-      break;
 
     for (int j = 0; j < enabled_cameras.size(); ++j) {
       capture_expected[j] = true;
     }
+
+    if (cancelled_)
+      break;
 
     condition_variable_.notify_all();
     // Wait for captrue threads to finish
@@ -138,8 +157,18 @@ void V4lDriver::MainThread() {
       capture.capture_date = time[i];
       captures->push_back(capture);
     }
+
     Notify(captures);
   }
+
+  for (int j = 0; j < enabled_cameras.size(); ++j) {
+    capture_expected[j] = true;
+  }
+
+  if (cancelled_)
+    condition_variable_.notify_all();
+  // Normally we should have another thread which does this
+
   for (int i = 0; i < enabled_cameras.size(); ++i) {
     enabled_camera_threads[i]->join();
     delete enabled_camera_threads[i];
@@ -150,6 +179,28 @@ void V4lDriver::MainThread() {
 void V4lDriver::Join() {
   if (thread_)
     thread_->join();
+}
+
+void V4lDriver::Stop() {
+  cancelled_ = true;
+  Join();
+  delete thread_;
+  thread_ = nullptr;
+}
+
+void V4lDriver::UnRegister(CameraWatcher *observer) {
+  observers_.erase(std::remove_if(observers_.begin(),
+                                  observers_.end(),
+                                  [&](const algorithm::Observer<std::vector<Capture>> *ob) {
+                                    return (CameraWatcher *) ob == observer;
+                                  }));
+}
+V4lDriver::~V4lDriver() {
+  Stop();
+  for (std::pair<std::string, V4lCamera *> vcam_cam: cameras_) {
+    delete vcam_cam.second;
+  }
+
 }
 
 }
