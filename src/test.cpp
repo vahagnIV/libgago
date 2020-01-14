@@ -46,9 +46,9 @@ int main() {
     driver.Initialize();
     {
       OpenCvPlayer player;
-      driver.Register(&player);
+      driver.RegisterWatcher(&player);
       driver.Start();
-      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::this_thread::sleep_for(std::chrono::seconds(25));
       driver.Stop();
       driver.UnRegister(&player);
     }

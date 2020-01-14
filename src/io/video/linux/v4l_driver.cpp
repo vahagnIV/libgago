@@ -18,7 +18,7 @@ void V4lDriver::Register(algorithm::Observer<std::vector<Capture>> *observer) {
   this->observers_.push_back(observer);
 }
 
-void V4lDriver::Register(CameraWatcher *observer) {
+void V4lDriver::RegisterWatcher(CameraWatcher *observer) {
   Register((algorithm::Observer<std::vector<Capture>> *) observer);
 }
 
@@ -37,6 +37,7 @@ void V4lDriver::Initialize() {
 }
 
 void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
+  bool running = thread_;
   Stop();
   for (const CameraSettings & setting: settings) {
     // TODO: verify settings
@@ -47,7 +48,8 @@ void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
       camera->settings_ = setting.config;
     }
   }
-  Start();
+  if(running)
+    Start();
 }
 
 void V4lDriver::GetSettings(std::vector<CameraSettings> & out_settings) const {
@@ -194,6 +196,7 @@ void V4lDriver::UnRegister(CameraWatcher *observer) {
                                     return (CameraWatcher *) ob == observer;
                                   }));
 }
+
 V4lDriver::~V4lDriver() {
   Stop();
   for (std::pair<std::string, V4lCamera *> vcam_cam: cameras_) {

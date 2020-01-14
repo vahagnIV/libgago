@@ -85,6 +85,8 @@ V4lCamera::V4lCamera(int fd,
   settings_.resolution_index = 0;
   settings_.number_of_buffers = 3;
 
+  memset(&request_buffers_, 0, sizeof(request_buffers_));
+
 }
 
 void V4lCamera::InitFormats(int fd, std::vector<v4l2_fmtdesc> & out_formats) {

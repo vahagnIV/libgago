@@ -16,6 +16,7 @@ class Observable {
  public:
   Observable() = default;
   virtual void Register(Observer<T> *observer) = 0;
+  virtual void UnRegister(Observer<T> *observer) = 0;
   virtual ~Observable(){};
  protected:
   void Notify(const std::shared_ptr<T> &data) {

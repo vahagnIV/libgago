@@ -29,11 +29,12 @@ class V4lDriver : public ICameraDriver {
   virtual ~V4lDriver();
   void Start() override;
   void Join();
-  void Register(CameraWatcher *observer);
-  void UnRegister(CameraWatcher *observer);
+  void RegisterWatcher(CameraWatcher *observer) override;
+  void UnRegister(CameraWatcher *observer) override;
   void Stop();
 
  private:
+  void UnRegister(algorithm::Observer<std::vector<Capture>> *observer) override {};
   void Register(algorithm::Observer<std::vector<Capture>> *observer) override;
   void CaptureThread(V4lCamera *camera_ptr,
                      std::atomic_bool & capture_requested,
