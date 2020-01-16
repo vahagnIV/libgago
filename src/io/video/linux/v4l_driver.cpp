@@ -15,11 +15,18 @@ V4lDriver::V4lDriver() {
 }
 
 void V4lDriver::Register(algorithm::Observer<std::vector<Capture>> *observer) {
+
   this->observers_.push_back(observer);
+
 }
 
 void V4lDriver::RegisterWatcher(CameraWatcher *observer) {
+  bool running = thread_;
+  Stop();
   Register((algorithm::Observer<std::vector<Capture>> *) observer);
+
+  if (running)
+    Start();
 }
 
 void V4lDriver::Initialize() {
@@ -48,7 +55,7 @@ void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
       camera->settings_ = setting.config;
     }
   }
-  if(running)
+  if (running)
     Start();
 }
 
@@ -61,6 +68,15 @@ void V4lDriver::GetSettings(std::vector<CameraSettings> & out_settings) const {
 void V4lDriver::Start() {
   if (nullptr == thread_) {
     cancelled_ = false;
+    std::vector<const CameraMeta *> enabled_cameras_meta;
+    for (const std::pair<std::string, V4lCamera *> & cam_name_cam: cameras_)
+      if (cam_name_cam.second->Enabled()) {
+        enabled_cameras_meta.push_back(cam_name_cam.second);
+      }
+
+    for (int k = 0; k < observers_.size(); ++k) {
+      ((CameraWatcher *) observers_[k])->SetCameras(enabled_cameras_meta);
+    }
     thread_ = new std::thread(&V4lDriver::MainThread, this);
   }
 }
@@ -84,16 +100,10 @@ void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
 
 void V4lDriver::MainThread() {
   std::vector<V4lCamera *> enabled_cameras;
-  std::vector<const CameraMeta *> enabled_cameras_meta;
   for (const std::pair<std::string, V4lCamera *> & cam_name_cam: cameras_)
     if (cam_name_cam.second->Enabled()) {
       enabled_cameras.push_back(cam_name_cam.second);
-      enabled_cameras_meta.push_back(cam_name_cam.second);
     }
-
-  for (int k = 0; k < observers_.size(); ++k) {
-    ((CameraWatcher *) observers_[k])->SetCameras(enabled_cameras_meta);
-  }
 
   std::vector<std::thread *> enabled_camera_threads(enabled_cameras.size());
   std::vector<std::atomic_bool> capture_expected(enabled_cameras.size());

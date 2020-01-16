@@ -43,13 +43,13 @@ void V4lCamera::Yuyv2Rgb(const uint8_t *src,
 
       int v1 = (((v - 128) << 1) + (v - 128)) >> 1;
 
-      *dest++ = CLIP(src[0] + u1);
-      *dest++ = CLIP(src[0] - rg);
       *dest++ = CLIP(src[0] + v1);
+      *dest++ = CLIP(src[0] - rg);
+      *dest++ = CLIP(src[0] + u1);
 
-      *dest++ = CLIP(src[2] + u1);
-      *dest++ = CLIP(src[2] - rg);
       *dest++ = CLIP(src[2] + v1);
+      *dest++ = CLIP(src[2] - rg);
+      *dest++ = CLIP(src[2] + u1);
       src += 4;
     }
     src += stride - (width * 2);
@@ -65,6 +65,7 @@ V4lCamera::V4lCamera(int fd,
       format_descriptions_(format_descriptions),
       available_resolutions_(available_resolutions),
       device_details_(device_details),
+      current_capture_index(0),
       device_path_(device_path) {
 
   for (v4l2_fmtdesc & fmt : format_descriptions_)
