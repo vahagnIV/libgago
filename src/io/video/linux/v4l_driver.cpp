@@ -200,11 +200,15 @@ void V4lDriver::Stop() {
 }
 
 void V4lDriver::UnRegister(CameraWatcher *observer) {
+  bool running = thread_;
+  Stop();
   observers_.erase(std::remove_if(observers_.begin(),
                                   observers_.end(),
                                   [&](const algorithm::Observer<std::vector<Capture>> *ob) {
                                     return (CameraWatcher *) ob == observer;
                                   }));
+  if(running)
+    Start();
 }
 
 V4lDriver::~V4lDriver() {
