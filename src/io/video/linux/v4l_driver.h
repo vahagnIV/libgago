@@ -32,6 +32,7 @@ class V4lDriver : public ICameraDriver {
   void RegisterWatcher(CameraWatcher *observer) override;
   void UnRegister(CameraWatcher *observer) override;
   void Stop();
+  std::vector<const CameraMeta *> GetCameras() const override;
 
  private:
   void UnRegister(algorithm::Observer<std::vector<Capture>> *observer) override {};

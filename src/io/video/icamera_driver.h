@@ -30,6 +30,7 @@ class ICameraDriver : public algorithm::Observable<std::vector<Capture>> {
   ICameraDriver() = default;
   virtual void SetSettings(const std::vector<CameraSettings> & settings) = 0;
   virtual void GetSettings(std::vector<CameraSettings> & out_settings) const = 0;
+  virtual std::vector<const CameraMeta *> GetCameras() const = 0;
   virtual void RegisterWatcher(CameraWatcher *) = 0;
   virtual void UnRegister(CameraWatcher *) = 0;
   virtual void Start() = 0;
