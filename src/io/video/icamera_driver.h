@@ -5,27 +5,14 @@
 #ifndef LIBGAGO_SRC_IO_VIDEO_I_CAMERA_DRIVER_H_
 #define LIBGAGO_SRC_IO_VIDEO_I_CAMERA_DRIVER_H_
 
-#include "camera.h"
-#include "algorithm/observable.hpp"
+#include "camera_settings.h"
+#include "icamera_watcher.h"
 
 namespace gago {
 namespace io {
 namespace video {
 
-struct Capture {
-  Capture(const CameraMeta *cam) : camera(cam) {}
-  const CameraMeta *camera;
-  long long capture_date;
-  cv::Mat data;
-};
-
-// TODO: remove observer
-class CameraWatcher : public algorithm::Observer<std::vector<Capture>> {
- public:
-  virtual void SetCameras(const std::vector<const CameraMeta *> &) = 0;
-};
-
-class ICameraDriver : public algorithm::Observable<std::vector<Capture>> {
+class ICameraDriver {
  public:
   ICameraDriver() = default;
   virtual void SetSettings(const std::vector<CameraSettings> & settings) = 0;
@@ -34,10 +21,11 @@ class ICameraDriver : public algorithm::Observable<std::vector<Capture>> {
   virtual void RegisterWatcher(CameraWatcher *) = 0;
   virtual void UnRegister(CameraWatcher *) = 0;
   virtual void Start() = 0;
+  virtual void Stop() = 0;
+  virtual void Join() = 0;
   virtual ~ICameraDriver() = default;
- protected:
-
 };
+
 }
 }
 }

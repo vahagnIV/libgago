@@ -5,7 +5,7 @@
 #ifndef LIBGAGO_V_4_L_CAMERA_H
 #define LIBGAGO_V_4_L_CAMERA_H
 
-#include "io/video/camera.h"
+#include "io/video/camera_settings.h"
 
 #include <linux/videodev2.h>
 
@@ -16,19 +16,21 @@ namespace video {
 class V4lDriver;
 
 class V4lCamera : public CameraMeta {
+  friend class V4lDriver;
  public:
   virtual ~V4lCamera();
   static V4lCamera *Create(const std::string & device_path);
+
+  //CameraMeta
   const std::string & GetUniqueId() const override;
   const std::string & GetHardwareDetails() const override;
-  friend class V4lDriver;
 
   bool Enabled() const { return settings_.status == CameraStatus::Enabled; }
+  void SetConfiguration(const CameraConfiguration & config);
+ private:
   bool Grab();
   bool Retieve(cv::Mat & out_image);
   bool PrepareBuffers();
- private:
-  bool Open();
   void Close();
   bool SetFormat();
   bool InitRequestBuffers();

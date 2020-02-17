@@ -1,8 +1,9 @@
 //
-// Created by vahagn on 1/5/20.
+// Created by vahagn on 2/17/20.
 //
 
-#include "camera.h"
+#include "camera_status.h"
+
 #include <boost/algorithm/string.hpp>
 
 namespace gago {

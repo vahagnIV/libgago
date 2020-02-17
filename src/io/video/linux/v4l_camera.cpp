@@ -80,7 +80,7 @@ V4lCamera::V4lCamera(int fd,
     }
   }
 
-  SetName(device_path);
+  settings_.name = device_path;
   settings_.status = CameraStatus::Enabled;
   settings_.format_index = 0;
   settings_.resolution_index = 0;
@@ -147,13 +147,6 @@ V4lCamera *V4lCamera::Create(const std::string & device_path) {
 V4lCamera::~V4lCamera() {
   UnmapBuffers();
   Close();
-}
-
-bool V4lCamera::Open() {
-  if (fd_ > 0)
-    Close();
-  fd_ = ::open(device_path_.c_str(), O_RDWR);
-  return fd_ > 0;
 }
 
 void V4lCamera::Close() {
@@ -277,6 +270,11 @@ void V4lCamera::UnmapBuffers() {
       return;
     }
   }
+
+}
+
+void V4lCamera::SetConfiguration(const CameraConfiguration & config) {
+  this->settings_ = config;
 
 }
 
