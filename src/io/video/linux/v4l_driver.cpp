@@ -5,7 +5,6 @@
 #include "v4l_driver.h"
 #include <boost/filesystem.hpp>
 #include <pthread.h>
-#include <sched.h>
 namespace gago {
 namespace io {
 namespace video {
@@ -38,11 +37,13 @@ void V4lDriver::RegisterWatcher(CameraWatcher *watcher) {
 void V4lDriver::UnRegister(CameraWatcher *observer) {
   bool running = thread_;
   Stop();
-  watchers_.erase(std::remove_if(watchers_.begin(),
-                                 watchers_.end(),
-                                 [&](const CameraWatcher *ob) {
-                                   return (CameraWatcher *) ob == observer;
-                                 }));
+
+  if (!watchers_.empty())
+    watchers_.erase(std::remove_if(watchers_.begin(),
+                                   watchers_.end(),
+                                   [&observer](const CameraWatcher *ob) {
+                                     return ob == observer;
+                                   }));
   if (running)
     Start();
 }
