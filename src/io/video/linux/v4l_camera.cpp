@@ -230,7 +230,7 @@ bool V4lCamera::PrepareBuffers() {
 }
 
 bool V4lCamera::Grab() {
-  bool result = 0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
+  return  0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
 }
 
 bool V4lCamera::Retieve(cv::Mat & out_image) {
@@ -250,6 +250,7 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
   return true;
 
 }
+
 void V4lCamera::UnmapBuffers() {
   if (request_buffers_.count) {
     request_buffers_.count = 0;

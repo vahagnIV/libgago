@@ -63,7 +63,7 @@ void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
     Stop();
   } else
     running = false;
-  
+
   for (const CameraSettings & setting: settings) {
     // TODO: verify settings
     if (cameras_.find(setting.camera->GetUniqueId()) != cameras_.end()) {
@@ -109,6 +109,7 @@ void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
 }
 
 void V4lDriver::MainThread() {
+
   std::vector<V4lCamera *> enabled_cameras;
   for (const std::pair<std::string, V4lCamera *> & cam_name_cam: cameras_)
     if (cam_name_cam.second->Enabled()) {
@@ -137,6 +138,11 @@ void V4lDriver::MainThread() {
   std::ofstream valod("diff.txt");
 
   while (!cancelled_) {
+    if (watchers_.empty()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      continue;
+    }
+
 
     // Wait until all cameras are ready
     bool all_are_ready;
