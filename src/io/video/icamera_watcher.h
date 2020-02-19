@@ -26,6 +26,8 @@ class CameraWatcher {
    * @param data shared pointer to the list of Capture objects
    */
   virtual void Notify(const std::shared_ptr<std::vector<Capture>> & data) = 0;
+
+  virtual ~CameraWatcher() = default;
 };
 
 }
