@@ -17,7 +17,7 @@ class CameraWatcher {
   /*!
    * This function is called by the camera driver
    * when the list of cameras was changed
-   * @param out_cameras The list which will be list with vailid CameraMeta pointers
+   * @param out_cameras The list which will be filled with valid CameraMeta pointers
    */
   virtual void SetCameras(const std::vector<const CameraMeta *> & out_cameras) = 0;
 
