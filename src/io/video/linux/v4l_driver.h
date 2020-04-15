@@ -32,13 +32,13 @@ class V4lDriver : public ICameraDriver {
   std::vector<const CameraMeta *> GetCameras() const override;
 
   virtual ~V4lDriver();
+  void MainThread();
  private:
   void CaptureThread(V4lCamera *camera_ptr,
                      std::atomic_bool & capture_requested,
                      std::atomic_bool & ready,
                      long long & time);
   void Notify(const std::shared_ptr<std::vector<Capture>> & captures);
-  void MainThread();
 
   std::unordered_map<std::string, V4lCamera *> cameras_;
   std::vector<CameraWatcher *> watchers_;

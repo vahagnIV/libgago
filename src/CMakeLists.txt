@@ -6,7 +6,9 @@ file(GLOB SOURCES *.h *.cpp io/video/*.h io/video/*.cpp)
 list(REMOVE_ITEM SOURCES test.cpp)
 if (UNIX AND NOT APPLE)
     find_package(V4L2 REQUIRED)
-    file(GLOB OS_SPECIFIC io/video/linux/*.h io/video/linux/*.cpp)
+    find_package(JPEG REQUIRED)
+    INCLUDE_DIRECTORIES(${JPEG_INCLUDE_DIR})
+    file(GLOB OS_SPECIFIC io/video/linux/*.h io/video/linux/*.cpp io/video/linux/codecs/* io/video/cross_platform/*.h io/video/cross_platform/*.cpp)
 else ()
     message("NOT LINUX")
     file(GLOB OS_SPECIFIC io/video/cross_platform/*.h io/video/cross_platform/*.cpp)
@@ -17,12 +19,15 @@ INCLUDE_DIRECTORIES(include ${OpenCV_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} $
 
 add_library(gago SHARED ${SOURCES} ${OS_SPECIFIC})
 add_executable(test test.cpp)
-target_link_libraries(test gago)
 set_target_properties(gago PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries(test gago)
 
 target_link_libraries(gago ${V4L2_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY}
         ${Boost_SYSTEM_LIBRARY} ${OpenCV_LIBRARIES} pthread)
-
+if (UNIX AND NOT APPLE)
+    target_link_libraries(gago ${JPEG_LIBRARY})
+endif ()
 
 file(GLOB PUBLIC_HEADERS *.h io/video/*.h io/video/linux/*.h)
 

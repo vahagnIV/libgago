@@ -110,7 +110,7 @@ void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
 }
 
 void V4lDriver::MainThread() {
-
+  cancelled_ = false;
   std::vector<V4lCamera *> enabled_cameras;
   for (const std::pair<std::string, V4lCamera *> & cam_name_cam: cameras_)
     if (cam_name_cam.second->Enabled()) {

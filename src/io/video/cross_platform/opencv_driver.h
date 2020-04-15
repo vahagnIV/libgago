@@ -5,6 +5,8 @@
 #ifndef LIBGAGO_OPENCVDRIVER_H
 #define LIBGAGO_OPENCVDRIVER_H
 #include <thread>
+#include <condition_variable>
+#include <atomic>
 #include <io/video/icamera_driver.h>
 #include "opencv_camera.h"
 
