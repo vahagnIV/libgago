@@ -11,6 +11,9 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <linux/videodev2.h>
 
+#include "codecs/yuyv_2_rgb.h"
+#include "codecs/mjpeg_2_rgb.h"
+
 namespace gago {
 namespace io {
 namespace video {
@@ -23,37 +26,6 @@ int xioctl(int fd, int request, void *arg) {
   while (-1 == r && EINTR == errno);
 
   return r;
-}
-
-#define CLIP(color) (uint8_t)(((color) > 0xFF) ? 0xff : (((color) < 0) ? 0 : (color)))
-void V4lCamera::Yuyv2Rgb(const uint8_t *src,
-                         uint8_t *dest,
-                         int width, int height,
-                         int stride) {
-  int j;
-
-  while (--height >= 0) {
-    for (j = 0; j + 1 < width; j += 2) {
-      int u = src[1];
-      int v = src[3];
-
-      int u1 = (((u - 128) << 7) + (u - 128)) >> 6;
-      int rg = (((u - 128) << 1) + (u - 128) +
-          ((v - 128) << 2) + ((v - 128) << 1)) >> 3;
-
-      int v1 = (((v - 128) << 1) + (v - 128)) >> 1;
-
-      *dest++ = CLIP(src[0] + v1);
-      *dest++ = CLIP(src[0] - rg);
-      *dest++ = CLIP(src[0] + u1);
-
-      *dest++ = CLIP(src[2] + v1);
-      *dest++ = CLIP(src[2] - rg);
-      *dest++ = CLIP(src[2] + u1);
-      src += 4;
-    }
-    src += stride - (width * 2);
-  }
 }
 
 V4lCamera::V4lCamera(int fd,
@@ -230,7 +202,7 @@ bool V4lCamera::PrepareBuffers() {
 }
 
 bool V4lCamera::Grab() {
-  return  0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
+  return 0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
 }
 
 bool V4lCamera::Retieve(cv::Mat & out_image) {
@@ -240,11 +212,16 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
 
   out_image.create(format_.fmt.pix.height, format_.fmt.pix.width, CV_8UC3);
 
-  Yuyv2Rgb(buffers_[current_capture_index],
-           out_image.data,
-           format_.fmt.pix.width,
-           format_.fmt.pix.height,
-           format_.fmt.pix.bytesperline);
+  if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+    Yuyv2Rgb(buffers_[current_capture_index],
+             out_image.data,
+             format_.fmt.pix.width,
+             format_.fmt.pix.height,
+             format_.fmt.pix.bytesperline);
+  } else if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
+    MJpeg2Rgb(buffers_[current_capture_index], out_image.data, v4l2_buffer_[current_capture_index].length);
+
+  }
 
   current_capture_index = (current_capture_index + 1) % settings_.number_of_buffers;
   return true;

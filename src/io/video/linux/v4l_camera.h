@@ -49,10 +49,7 @@ class V4lCamera : public CameraMeta {
                               const std::vector<v4l2_fmtdesc> & formats,
                               std::vector<std::vector<v4l2_frmsizeenum>> & resolutions);
 
-  void Yuyv2Rgb(const uint8_t *src,
-                           uint8_t *dest,
-                           int width, int height,
-                           int stride);
+
 
   // Device info
   const std::string device_path_;
