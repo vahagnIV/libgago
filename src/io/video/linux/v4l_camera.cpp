@@ -222,6 +222,8 @@ bool V4lCamera::Retieve(cv::Mat & out_image) {
     MJpeg2Rgb(buffers_[current_capture_index], out_image.data, v4l2_buffer_[current_capture_index].length);
 
   }
+  if (settings_.vertical_flip)
+    cv::flip(out_image, out_image, -1);
 
   current_capture_index = (current_capture_index + 1) % settings_.number_of_buffers;
   return true;
