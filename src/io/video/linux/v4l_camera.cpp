@@ -5,6 +5,7 @@
 #include "v4l_camera.h"
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <fstream>
 #include <fcntl.h>
 #include <libv4l2.h>
 #include <boost/filesystem/path.hpp>
