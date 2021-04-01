@@ -14,13 +14,14 @@ namespace video {
 struct CameraConfiguration {
   bool operator==(const CameraConfiguration & other) const {
     return format_index == other.format_index && resolution_index == other.resolution_index
-        && status == other.status && number_of_buffers == other.number_of_buffers;
+        && status == other.status && number_of_buffers == other.number_of_buffers && vertical_flip == other.vertical_flip;
   }
 
   bool operator!=(const CameraConfiguration & other) const {
     return !(this->operator==(other));
   }
   CameraStatus status = CameraStatus::Enabled;
+  bool vertical_flip = false;
   int resolution_index = 0;
   std::string name;
   int format_index = 0;
