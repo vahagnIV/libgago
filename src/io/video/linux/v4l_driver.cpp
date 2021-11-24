@@ -19,14 +19,14 @@ void V4lDriver::Initialize() {
        it != boost::filesystem::directory_iterator(); ++it) {
     if (boost::filesystem::is_directory(it->path())) {
       std::string device_path = "/dev/" + it->path().filename().string();
-      V4lCamera *camera = V4lCamera::Create(device_path);
+      V4lCamera * camera = V4lCamera::Create(device_path);
       if (camera)
         cameras_[camera->GetUniqueId()] = camera;
     }
   }
 }
 
-void V4lDriver::RegisterWatcher(CameraWatcher *watcher) {
+void V4lDriver::RegisterWatcher(CameraWatcher * watcher) {
   bool running = thread_;
   Stop();
   watchers_.push_back(watcher);
@@ -34,14 +34,14 @@ void V4lDriver::RegisterWatcher(CameraWatcher *watcher) {
     Start();
 }
 
-void V4lDriver::UnRegister(CameraWatcher *observer) {
+void V4lDriver::UnRegister(CameraWatcher * observer) {
   bool running = thread_;
   Stop();
 
   if (!watchers_.empty())
     watchers_.erase(std::remove_if(watchers_.begin(),
                                    watchers_.end(),
-                                   [&observer](const CameraWatcher *ob) {
+                                   [&observer](const CameraWatcher * ob) {
                                      return ob == observer;
                                    }));
   if (running)
@@ -68,7 +68,7 @@ void V4lDriver::SetSettings(const std::vector<CameraSettings> & settings) {
   for (const CameraSettings & setting: settings) {
     // TODO: verify settings
     if (cameras_.find(setting.camera->GetUniqueId()) != cameras_.end()) {
-      V4lCamera *camera = cameras_[setting.camera->GetUniqueId()];
+      V4lCamera * camera = cameras_[setting.camera->GetUniqueId()];
       camera->SetConfiguration(setting.config);
     }
   }
@@ -94,7 +94,7 @@ void V4lDriver::Start() {
   }
 }
 
-void V4lDriver::CaptureThread(V4lCamera *camera_ptr,
+void V4lDriver::CaptureThread(V4lCamera * camera_ptr,
                               std::atomic_bool & capture_requested,
                               std::atomic_bool & ready,
                               long long & time) {
@@ -170,6 +170,9 @@ void V4lDriver::MainThread() {
       Capture capture(enabled_cameras[i]);
       enabled_cameras[i]->Retieve(capture.data);
       capture.capture_date = time[i];
+      capture.width = enabled_cameras[i]->format_.fmt.pix.width;
+      capture.height = enabled_cameras[i]->format_.fmt.pix.height;
+      capture.channels = 3;
       captures->push_back(capture);
     }
 
@@ -213,7 +216,7 @@ std::vector<const CameraMeta *> V4lDriver::GetCameras() const {
 }
 
 void V4lDriver::Notify(const std::shared_ptr<std::vector<Capture>> & captures) {
-  for (CameraWatcher *watcher: watchers_)
+  for (CameraWatcher * watcher: watchers_)
     watcher->Notify(captures);
 }
 

@@ -19,7 +19,7 @@ namespace gago {
 namespace io {
 namespace video {
 
-int xioctl(int fd, int request, void *arg) {
+int xioctl(int fd, int request, void * arg) {
   int r;
 
   do
@@ -41,7 +41,7 @@ V4lCamera::V4lCamera(int fd,
       current_capture_index(0),
       device_path_(device_path) {
 
-  for (v4l2_fmtdesc & fmt : format_descriptions_)
+  for (v4l2_fmtdesc & fmt: format_descriptions_)
     formats_.push_back(std::string((char *) fmt.description));
 
   resolutions_.resize(formats_.size());
@@ -92,7 +92,7 @@ void V4lCamera::InitResolutions(int fd,
 
 }
 
-V4lCamera *V4lCamera::Create(const std::string & device_path) {
+V4lCamera * V4lCamera::Create(const std::string & device_path) {
   int fd = ::open(device_path.c_str(), O_RDWR);
   if (fd < 0)
     return nullptr;
@@ -188,6 +188,7 @@ bool V4lCamera::InitBuffers() {
       return false;
     }
   }
+  return true;
 }
 
 const std::string & V4lCamera::GetUniqueId() const {
@@ -206,25 +207,43 @@ bool V4lCamera::Grab() {
   return 0 == xioctl(fd_, VIDIOC_QBUF, &v4l2_buffer_[current_capture_index]);
 }
 
-bool V4lCamera::Retieve(cv::Mat & out_image) {
+bool V4lCamera::Retieve(std::vector<uint8_t> & out_image) {
 
   if (-1 == xioctl(fd_, VIDIOC_DQBUF, &v4l2_buffer_[current_capture_index]))
     return false;
 
-  out_image.create(format_.fmt.pix.height, format_.fmt.pix.width, CV_8UC3);
 
-  if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
-    Yuyv2Rgb(buffers_[current_capture_index],
-             out_image.data,
-             format_.fmt.pix.width,
-             format_.fmt.pix.height,
-             format_.fmt.pix.bytesperline);
-  } else if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
-    MJpeg2Rgb(buffers_[current_capture_index], out_image.data, v4l2_buffer_[current_capture_index].length);
+//  out_image.create(format_.fmt.pix.height, format_.fmt.pix.width, CV_8UC3);
 
+  if (settings_.decode_image) {
+    out_image.resize(format_.fmt.pix.height * format_.fmt.pix.width * 3);
+    if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+      Yuyv2Rgb(buffers_[current_capture_index],
+               out_image.data(),
+               format_.fmt.pix.width,
+               format_.fmt.pix.height,
+               format_.fmt.pix.bytesperline);
+    } else if (format_.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
+      MJpeg2Rgb(buffers_[current_capture_index],
+                out_image.data(),
+                v4l2_buffer_[current_capture_index].length);
+
+    }
+    if (settings_.vertical_flip) {
+      for (size_t row = 0; row < format_.fmt.pix.height / 2; ++row) {
+        for (size_t col = 0; col < format_.fmt.pix.width; ++col) {
+          size_t pix_offset = 3 * (row * format_.fmt.pix.width + col);
+          size_t other_pix_offset = 3 * ((format_.fmt.pix.height - 1 - row) * row * format_.fmt.pix.width + col);
+          for (size_t i = 0; i < 3; ++i) {
+            std::swap(out_image[pix_offset + i], out_image[other_pix_offset + i]);
+          }
+        }
+      }
+    }
+  } else {
+    out_image.resize(v4l2_buffer_[current_capture_index].length);
+    memcpy(out_image.data(), buffers_[current_capture_index], v4l2_buffer_[current_capture_index].length);
   }
-  if (settings_.vertical_flip)
-    cv::flip(out_image, out_image, -1);
 
   current_capture_index = (current_capture_index + 1) % settings_.number_of_buffers;
   return true;

@@ -29,7 +29,7 @@ class V4lCamera : public CameraMeta {
   void SetConfiguration(const CameraConfiguration & config);
  private:
   bool Grab();
-  bool Retieve(cv::Mat & out_image);
+  bool Retieve(std::vector<uint8_t> & out_image);
   bool PrepareBuffers();
   void Close();
   bool SetFormat();

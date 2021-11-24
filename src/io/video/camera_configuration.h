@@ -14,7 +14,8 @@ namespace video {
 struct CameraConfiguration {
   bool operator==(const CameraConfiguration & other) const {
     return format_index == other.format_index && resolution_index == other.resolution_index
-        && status == other.status && number_of_buffers == other.number_of_buffers && vertical_flip == other.vertical_flip;
+        && status == other.status && number_of_buffers == other.number_of_buffers
+        && vertical_flip == other.vertical_flip && decode_image == other.decode_image;
   }
 
   bool operator!=(const CameraConfiguration & other) const {
@@ -26,6 +27,7 @@ struct CameraConfiguration {
   std::string name;
   int format_index = 0;
   int number_of_buffers = 1;
+  bool decode_image = true;
 };
 
 }

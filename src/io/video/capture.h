@@ -14,7 +14,10 @@ struct Capture {
   Capture(const CameraMeta *cam) : camera(cam) {}
   const CameraMeta *camera;
   long long capture_date;
-  cv::Mat data;
+  std::vector<uint8_t> data;
+  uint32_t width;
+  uint32_t height;
+  uint8_t channels;
 };
 
 }

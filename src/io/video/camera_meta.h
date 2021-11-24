@@ -15,7 +15,10 @@ namespace gago {
 namespace io {
 namespace video {
 
-typedef cv::Size Size;
+struct Size{
+  int width;
+  int height;
+};
 
 class CameraMeta {
  public:
