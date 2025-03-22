@@ -136,7 +136,6 @@ void V4lDriver::MainThread() {
                         std::ref(ready[j]),
                         std::ref(time[j]));
   }
-  std::ofstream valod("diff.txt");
 
   while (!cancelled_) {
     if (watchers_.empty()) {
